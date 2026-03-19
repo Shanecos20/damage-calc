@@ -1,6 +1,86 @@
+function radredAbilityForCalc(species, gameAbility) {
+	if (calc.ABILITIES[9].indexOf(gameAbility) !== -1) return gameAbility;
+	var data = window.RADRED_SAV_DATA;
+	if (!data || !data.abilityBySpecies) return gameAbility;
+	var row = data.abilityBySpecies[species];
+	if (!row) return gameAbility;
+	if (calc.ABILITIES[9].indexOf(row.primary) !== -1) return row.primary;
+	if (calc.ABILITIES[9].indexOf(row.secondary) !== -1) return row.secondary;
+	if (row.hidden && calc.ABILITIES[9].indexOf(row.hidden) !== -1) return row.hidden;
+	return row.primary || gameAbility;
+}
+
+function radredPartyToPaste(party) {
+	var lines = [];
+	for (var i = 0; i < party.length; i++) {
+		var p = party[i];
+		var nick = (p.nickname || '').replace(/\s+/g, ' ').trim();
+		var speciesLine = nick && nick.toLowerCase() !== (p.species || '').toLowerCase()
+			? nick + ' (' + p.species + ')'
+			: p.species;
+		if (p.held_item_id && p.held_item_id !== 'None') {
+			speciesLine += ' @ ' + p.held_item_id;
+		}
+		lines.push(speciesLine);
+		lines.push('Ability: ' + radredAbilityForCalc(p.species, p.ability));
+		lines.push('Level: ' + p.level);
+		lines.push('EVs: ' + p.ev_hp + ' HP / ' + p.ev_attack + ' Atk / ' + p.ev_defense + ' Def / ' + p.ev_speed + ' Spe / ' + p.ev_special_attack + ' SpA / ' + p.ev_special_defense + ' SpD');
+		lines.push(p.nature + ' Nature');
+		lines.push('IVs: ' + p.iv_hp + ' HP / ' + p.iv_attack + ' Atk / ' + p.iv_defense + ' Def / ' + p.iv_speed + ' Spe / ' + p.iv_special_attack + ' SpA / ' + p.iv_special_defense + ' SpD');
+		var moves = [p.move1, p.move2, p.move3, p.move4];
+		for (var m = 0; m < moves.length; m++) {
+			if (moves[m] && moves[m] !== '(No Move)') {
+				lines.push('- ' + moves[m]);
+			}
+		}
+		lines.push('');
+	}
+	return lines.join('\n').trim();
+}
+
 function placeBsBtn() {
-	var importBtn = "<button id='import' class='bs-btn bs-btn-default'>Import</button>";
-	$("#import-1_wrapper").append(importBtn);
+	var fileInput = '<input type="file" id="radredSavFile" class="visually-hidden" accept=".sav,.SAV,application/octet-stream,*/*" aria-label="Select Radical Red save file" />';
+	var uploadBtn = '<button type="button" id="uploadSavTeam" class="bs-btn bs-btn-default" title="128 KB Radical Red 4.1 save — works on mobile when you pick &quot;Browse&quot; / All Files">Upload team (.sav)</button>';
+	var importBtn = "<button type=\"button\" id='import' class='bs-btn bs-btn-default'>Import</button>";
+	$("#import-1_wrapper").append(fileInput + uploadBtn + importBtn);
+
+	$("#uploadSavTeam").on("click", function () {
+		document.getElementById("radredSavFile").click();
+	});
+
+	$("#radredSavFile").on("change", function (e) {
+		var f = e.target.files && e.target.files[0];
+		if (!f) return;
+		if (!window.RadRedSav || !window.RADRED_SAV_DATA) {
+			alert("Save importer is not loaded. Refresh the page or rebuild the calculator.");
+			e.target.value = "";
+			return;
+		}
+		var reader = new FileReader();
+		reader.onload = function () {
+			try {
+				var party = window.RadRedSav.readParty(reader.result);
+				if (!party.length) {
+					alert("No Pokémon found in party (or only eggs).");
+					e.target.value = "";
+					return;
+				}
+				var text = radredPartyToPaste(party);
+				document.getElementsByClassName("import-team-text")[0].value = text;
+				var nameField = document.getElementsByClassName("import-name-text")[0].value.trim();
+				var setName = nameField === "" || nameField === "Custom Set" ? "Rad Red Save" : nameField;
+				addSets(text, setName);
+			} catch (err) {
+				alert(err && err.message ? err.message : String(err));
+			}
+			e.target.value = "";
+		};
+		reader.onerror = function () {
+			alert("Could not read that file.");
+			e.target.value = "";
+		};
+		reader.readAsArrayBuffer(f);
+	});
 
 	$("#import.bs-btn").click(function () {
 		var pokes = document.getElementsByClassName("import-team-text")[0].value;

@@ -56,6 +56,12 @@ function cpdir(src, dest) {
 	}
 }
 
+try {
+	require('child_process').execSync('node scripts/generate-radred-sav-data.js', { cwd: rootDir, stdio: 'inherit' });
+} catch (e) {
+	console.warn('Rad Red sav data generation skipped or failed:', e.message);
+}
+
 if (process.argv[2] !== 'view') {
 	require('child_process').execSync('npm --prefix calc/ run compile', {stdio: 'inherit'});
 }

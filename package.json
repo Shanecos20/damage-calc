@@ -32,6 +32,7 @@
     "terser": "^5.16.5"
   },
   "scripts": {
+    "vercel-build": "node scripts/generate-radred-sav-data.js && npm run compile --prefix calc && node build view",
     "lint": "subpkg run lint && eslint --cache src --ext js",
     "fix": "subpkg run fix && eslint --fix src --ext js",
     "compile": "subpkg run compile && node build view",
